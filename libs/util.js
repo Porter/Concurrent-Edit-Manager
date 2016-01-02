@@ -150,6 +150,11 @@ function setText(text, div, colors) {
 		}
 
 		div.appendChild(d);
+		left--;
+		if (left <= 0) {
+			pos++; subpos = 0;
+			if (pos < colors.length) left = colors[pos][0] - subpos;
+		}
 	}
 }
 
