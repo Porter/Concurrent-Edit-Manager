@@ -1,0 +1,379 @@
+<div id="textarea" style="font-size:14px; width: 80%; height: 100%; margin-left:10%; background-color: lightblue; padding: 10px;" contenteditable=true></div>
+
+
+
+<script src="/libs/change.js"></script>
+<script src="/libs/socket.io-1.2.0.js"></script>
+<script src="/libs/util.js"></script>
+<script src="/libs/jquery.min.js"></script>
+<script type="text/javascript">
+
+	var stop = false;
+
+	function after(num) {
+		return (num + 1) % 1000;
+	}
+
+	var textarea = document.getElementById("textarea");
+
+	var socket = io();
+
+	var value = "", localValue = "", colors = [], localColors = [];
+
+	var inited = false, editNumber, expectingNumber, expectingResponse = false, lastedSubmittedNumber;
+
+	var history = {};
+
+	var color;
+
+	socket.on('init', function(data) {
+		console.log('initing with');
+		console.log(JSON.stringify(data));
+
+		var text = data['text'];
+		var colorData = data['colors'];
+
+		color = data['color'];
+
+
+		setText(text, textarea, colorData);
+		value = localValue = text;
+		colors = colorData;
+		localColors = copyColors(colors);
+
+		editNumber = data['number'];
+		expectingNumber = after(editNumber);
+
+		inited = true;
+	});
+
+	socket.on('inputResponse', function(data) {
+		var number = data.number;
+		var hash = data.hash;
+
+		expectingResponse = false;
+		if (number == expectingNumber) {
+			console.log('expected input response recieved: ' + number);
+
+
+			if (hash != history[lastedSubmittedNumber].hash) {
+				stop = true;
+				console.log('hash miss, ' + hash + ' vs ' + history[lastedSubmittedNumber].hash);
+				console.log('lastedSubmittedNumber: ' + lastedSubmittedNumber);
+				console.log("we have: " + history[lastedSubmittedNumber].val);
+				console.log("it has : " + data.text);
+				alert('hashmiss');
+				throw new Error("Hash miss");
+				
+			}
+
+
+			history[lastedSubmittedNumber] = undefined; // we don't need it anymore
+
+			editNumber = number;
+			expectingNumber = after(number);
+
+		}
+		else {
+			console.log('Out of order input response. Got ' + number + ', expecting ' + expectingNumber);
+		}
+	});
+
+	socket.on('edit', function(data) {
+		var number = data.number;
+		var edit = data.edit;
+		var hash = data.hash;
+		
+		if (expectingResponse) {
+			if (expectingNumber == number) {
+				var cursor = getCursor(textarea);
+
+				var currentText = getText(textarea);
+				var difference = diff(localValue, currentText); // any new edits our user has made
+
+				console.log("unexpected edit recieved: " + number + " " + JSON.stringify(edit));
+				console.log('diff: ', difference);
+				var thisUsersEdit = history[lastedSubmittedNumber];
+				var previous = applyEditPath(value, thisUsersEdit.reversed); // undo the last logged edit our user made
+				var next = applyEditPath(previous, edit); // apply the edit another user made
+
+
+				applyEditPathToColors(localColors, thisUsersEdit.reversed, color); // do the same for the colors
+				applyEditPathToColors(colors, thisUsersEdit.reversed, color); // do the same for the colors
+				
+				
+				applyEditPathToColors(localColors, edit, data['color']);
+				applyEditPathToColors(colors, edit, data['color']); // do the same for the colors
+
+
+				history[number] = {hash:hashString(next), val:next};
+				var h = hashString(next);
+				if (hash != h) {
+					stop = true;
+
+					console.log('hash miss, ' + hash + ' vs ' + h);
+					console.log('expectingNumber: ' + expectingNumber);
+					console.log("we have: " + value);
+					console.log("it has : " + data.text);
+					alert('hashmiss');
+
+
+					throw new Error("Hash miss");
+
+				}
+
+
+				console.log("edit: ", JSON.stringify(edit));
+				console.log("b4", JSON.stringify(thisUsersEdit.normal));
+				var redo = copyEdit(thisUsersEdit.normal);
+				applyOffsets(redo, edit);
+				console.log("af", JSON.stringify(redo));
+
+				next = applyEditPath(next, redo); // and then redo the edit our user made
+				applyEditPathToColors(localColors, redo, color); // same for color
+				applyEditPathToColors(colors, redo, color); // same for color
+
+				thisUsersEdit.hash = hashString(next);
+				thisUsersEdit.val = next;
+				value = next;
+
+				applyOffsets(difference, edit);
+
+
+				next = applyEditPath(next, difference); // and lastly apply any new edits our user has made
+				applyEditPathToColors(localColors, difference, color);
+
+				setText(next, textarea, localColors);
+
+				localValue = next;
+
+				editNumber = number;
+				expectingNumber = after(number);
+
+				applyOffsetToCursor(cursor, edit);
+				setCursor(cursor, textarea);
+
+			}
+			else {
+				console.log('Out of order edit recieved while expecting a response: ' + number + '. expecting ' + expectingNumber);
+			}
+		}
+		else {
+			socket.emit('editRecieved', {number:number});
+			if (expectingNumber == number) {
+				var cursor = getCursor(textarea);
+				console.log('expected edit recieved: ' + number + " " + JSON.stringify(edit));
+
+
+
+				var currentText = getText(textarea);
+				var difference = diff(localValue, currentText); // any new edits our user has made
+				console.log('diff: ' + JSON.stringify(difference));
+
+
+				value = applyEditPath(value, edit);
+				localValue = applyEditPath(localValue, edit);
+
+				applyEditPathToColors(colors, edit, data['color']);
+				applyEditPathToColors(localColors, edit, data['color']);
+
+				var h = hashString(value);
+				if (hash != h) {
+					stop = true;
+
+					console.log('hash miss, ' + hash + ' vs ' + h);
+					console.log('expectingNumber: ' + expectingNumber);
+					console.log("we have: " + value);
+					console.log("it has : " + data.text);
+					alert('hashmiss');
+
+
+					throw new Error("Hash miss");
+
+				}
+
+				applyOffsets(difference, edit);
+				console.log('diff after offsets', JSON.stringify(difference));
+
+				var newText = applyEditPath(localValue, difference);
+				applyEditPathToColors(localColors, difference, color);
+
+				setText(newText, textarea, localColors);
+
+				localValue = newText;
+
+
+				editNumber = number;
+				expectingNumber = after(number);
+				applyOffsetToCursor(cursor, edit);
+				setCursor(cursor, textarea);
+			}
+			else {
+				console.log('edit recieved out of order while expecting an edit: ' + number + '. expecting ' + expectingNumber);
+			}
+		}
+
+		
+
+		
+
+		
+	});
+
+	var checkTime = 100;
+	function check() {
+		if (!inited || expectingResponse) {
+			setTimeout(check, checkTime);
+			return;
+		}
+		//console.log('checking');
+
+		removeEmptyDivs(textarea);
+
+		var text = getText(textarea).replace(/ /g, ' '); // char code 160 to be replaced with 32
+		var edit = diff(value, text);
+
+		if (edit.length == 0) {
+			setTimeout(check, checkTime);
+			return;
+		}
+		console.log(value + ' vs ' + text);
+
+		var reversed = reverseEditPath(edit, value, text);
+		history[editNumber] = {reversed:reversed, normal:edit, hash:hashString(text), val:text};
+
+		lastedSubmittedNumber = editNumber;
+
+		value = text;
+		localValue = text;
+
+		applyEditPathToColors(colors, edit, color);
+		var correct = checkColors(colors, textarea);
+		if (!correct) {
+			//console.log('incorrect');
+			var p = getCursor(textarea);
+			setText(value, textarea, colors);
+			localColors = copyColors(colors);
+			setCursor(p, textarea);
+		}
+
+		var str = editPathToString(edit);
+
+		var data = {change:str, number:editNumber, color:color};
+
+		console.log(data);
+		socket.emit('input', data);
+		console.log('sending ' + JSON.stringify(edit) + " with num: " + editNumber);
+		expectingResponse = true;
+
+
+
+		setTimeout(check, checkTime);
+
+	};
+
+	//textarea.oninput = check;
+
+	check();
+
+	function count(str, chr) {
+		var c =0;
+		for (var i = 0; i < str.length; i++) {
+			if (str.charAt(i) == chr) c++;
+		}
+		return c;
+	}
+
+
+	function test1(isMaster, chr) {
+
+		if (isMaster) {
+			setText('eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee', textarea);
+		}
+
+		var len = 500;
+
+		function doIt() {
+			if (stop) return;
+			var text = getText(textarea);
+			text = text.substring(0, 10) + chr + text.substring(10);
+			setText(text, textarea);
+		}
+		function passOrFail() {
+			if (stop) return;
+			console.log('done');
+			var c = count(getText(textarea), chr)
+			console.log(c == len?"pass":"fail" + c);
+
+		}
+
+		var time = 0;
+		for (var i = 0; i < len; i++) {
+			time += Math.floor(Math.random()*100);
+
+			setTimeout(doIt, time);
+		}
+
+		setTimeout(passOrFail, time+100);
+	}
+
+
+	function test2(isMaster, number) {
+
+		if (isMaster) {
+			setText('', textarea);
+		}
+		else {
+			setText(getText(textarea) + '\n', textarea);
+		}
+
+		var len = 26;
+
+
+		var inc = 0;
+
+		function doIt(chr) {
+			if (stop) return;
+
+			var text = getText(textarea);
+
+			var pos;
+			if (inc == 0) { 
+				if (isMaster) {
+					pos = 1;
+				}
+				else {
+					pos = text.indexOf('\n') + 1;
+				}
+			}
+			else { pos = text.indexOf(String.fromCharCode(chr+inc-1)) + 1; }
+
+			//console.log(String.fromCharCode(chr+inc-1), pos, text);
+			text = text.substring(0, pos) + String.fromCharCode(chr + inc) + text.substring(pos);
+			inc++;
+
+
+			setText(text, textarea);
+		}
+		function passOrFail() {
+			if (stop) return;
+			console.log('done');
+			return;
+			var c = count(getText(textarea), chr)
+			console.log(c == len?"pass":"fail" + c);
+
+		}
+
+		var time = isMaster ? 1000 : 0;
+		for (var i = 0; i < len; i++) {
+			time += Math.floor(Math.random()*100);
+
+			var code = isMaster ? 65 : 97;
+
+			setTimeout(function () { doIt(code); }, time);
+		}
+
+		setTimeout(passOrFail, time+100);
+	}
+
+</script>
