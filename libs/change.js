@@ -78,9 +78,7 @@ function applyEditPath(string, path) {
 exports.applyEditPath = applyEditPath;
 
 function applyEditPathToColors(colors, edit, color) {
-	if (colors.length == 0) {
-		colors.push([0, '']);
-	}
+	if (colors.length == 0) { colors.push([0, '']); }
 
 	var offset = 0;
 	for (var i = 0; i < edit.length; i++) {
@@ -88,6 +86,7 @@ function applyEditPathToColors(colors, edit, color) {
 
 		var length = 0;
 		var broke = false;
+		if (colors.length == 0) { colors.push([0, '']); }
 
 		for (var n = 0; n < colors.length; n++) {
 			length += colors[n][0];
@@ -128,6 +127,7 @@ function applyEditPathToColors(colors, edit, color) {
 				}
 			}
 		}
+
 		offset += e[0] == 'down' ? 1 : -1;
 	}
 
@@ -264,6 +264,27 @@ function diff(a, b) {
 	}	
 }
 exports.diff = diff;
+
+
+function finalize(edits, b4Text, cursor) {
+	if (!cursor) return;
+
+	console.log(JSON.stringify(edits));
+	console.log(b4Text);
+	console.log(cursor[0]);
+
+	var offset = 0;
+	for (var i = 0; i < edits.length; i++) {
+		var edit = edits[i];
+		console.log(edit);
+
+		offset += edit[0] == "down" ? 1 : -1;
+
+		for (var n = edit[1] - offset; n >= 0; n--) {
+			console.log(b4Text.charAt(n));
+		}
+	}
+}
 
 function hashString(string) {
   var hash = 0, i, chr, len;

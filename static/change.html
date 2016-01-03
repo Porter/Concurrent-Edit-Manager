@@ -237,7 +237,9 @@
 			setTimeout(check, checkTime);
 			return;
 		}
+		//finalize(edit, value, getCursor(textarea));
 		console.log(value + ' vs ' + text);
+		console.log(JSON.stringify(edit));
 
 		var reversed = reverseEditPath(edit, value, text);
 		history[editNumber] = {reversed:reversed, normal:edit, hash:hashString(text), val:text};
