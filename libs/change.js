@@ -6,6 +6,10 @@ function max(a, b) {
 	return a > b ? a : b;
 }
 
+function min(a, b) {
+	return a < b ? a : b;
+}
+
 function editPathToString(path) {
 	var s = "";
 	for (var i = 0; i < path.length; i++) {
@@ -278,11 +282,39 @@ function finalize(edits, b4Text, cursor) {
 		var edit = edits[i];
 		console.log(edit);
 
-		offset += edit[0] == "down" ? 1 : -1;
+		var location = edit[1] - offset, chr;
+		if (edit[0] == "down") {
+			chr = edit[2];
 
-		for (var n = edit[1] - offset; n >= 0; n--) {
-			console.log(b4Text.charAt(n));
+			location--;
 		}
+		else {
+			chr = b4Text.charAt(location);
+		}
+
+		console.log('chr', chr);
+
+		for (var lowest = location; lowest >= 0 && b4Text.charAt(lowest) == chr; lowest--) { }
+		if (b4Text.charAt(lowest) != chr) lowest++;
+
+		for (var greatest = location; greatest < b4Text.length && b4Text.charAt(greatest) == chr; greatest++) { }
+		if (b4Text.charAt(greatest) != chr) greatest--;
+		greatest++;
+
+		console.log('chr', chr, 'lowest ' , lowest, ' greatest ', greatest, 'cursor', cursor[0][0]);
+
+
+		var off = edit[0] == "down" ? 1 : -1;
+		console.log(cursor[0][0] - off, greatest + off, lowest + off, cursor[0][0] - off)
+
+		if (cursor[0][0] - off < greatest + off && lowest + off <= cursor[0][0] - off) {
+			console.log('chaing');
+			if (edit[0] == 'down') edit[1] = cursor[0][0] - 1;
+			else edit[1] = cursor[0][0]
+		}
+
+
+		offset += off;
 	}
 }
 
