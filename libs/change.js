@@ -62,22 +62,51 @@ function stringToEditPath(string) {
 }
 exports.stringToEditPath = stringToEditPath;
 
+
+//ffffffggggg
 function applyEditPath(string, path) {
-	var r = "";
-	var point = 0;
+	/*var offset = 0;
 	for (var i = 0; i < path.length; i++) {
 		var p = path[i];
+
+		var num = p[1] + offset;
+
+		if (p[0] == "down") {
+			string = string.substring(0, num) + p[2] + string.substring(num);
+			offset += p[2].length;
+		}
+		else {
+			string = string.substring(0, num) + string.substring(num+1);
+			offset--;
+		}
+
+		if (num > string.length) { 
+			console.log("p[1] overflow");
+		}
+	}
+	return string;*/
+
+	var offset = 0, last = 0, c = '';
+	for (var i = 0; i < path.length; i++) {
+		var p = path[i];
+
 		var num = p[1];
 
-		r += string.substring(point, num);
-		point = num;
+		if (p[0] == "down") {
+			c += string.substring(last, num) + p[2];
+			last = num;
+		}
+		else {
+			c += string.substring(last, num);
+			last = num + 1;
+		}
 
-		if (p[0] == "down") r += p[2]; 	// make the addition
-		else point++; 					// move point foward, skipping (and therefore deleting) the one character at num
+		if (num > string.length) { 
+			console.log("p[1] overflow");
+		}
 	}
+	return c + string.substring(last);
 
-	r += string.substring(point);
-	return r;
 }
 exports.applyEditPath = applyEditPath;
 
@@ -307,7 +336,7 @@ function finalize(edits, b4Text, cursor) {
 		var off = edit[0] == "down" ? 1 : -1;
 		console.log(cursor[0][0] - off, greatest + off, lowest + off, cursor[0][0] - off)
 
-		if (cursor[0][0] - off < greatest + off && lowest + off <= cursor[0][0] - off) {
+		if (cursor[0][0] - off <= greatest + off && lowest + off <= cursor[0][0] - off) {
 			console.log('chaing');
 			if (edit[0] == 'down') edit[1] = cursor[0][0] - 1;
 			else edit[1] = cursor[0][0]

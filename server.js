@@ -75,7 +75,6 @@ function cleanUpEdits(clients) {
 	}
 
 	var lowest = clients[0].lastEdit;
-	console.log('1st', lowest);
 	if (lowest == undefined) return;
 
 	for (var i = 1; i < clients.length; i++) {
@@ -92,7 +91,6 @@ function cleanUpEdits(clients) {
 			lowest = clients[i].lastEdit;
 		}
 	}
-	console.log('lowest', lowest);
 
 	for (var i = 0; i < cycleLen/2; i++) {
 		lowest--;
@@ -100,7 +98,6 @@ function cleanUpEdits(clients) {
 
 		edits[lowest] = undefined;
 	}
-	console.log('edits', JSON.stringify(edits));
 
 }
 
@@ -121,9 +118,10 @@ io.on('connection', function(socket){
 		var n = input['number'];
 
 		var edit = change.stringToEditPath(c);
-		console.log("got edit", JSON.stringify(edit));
+		
 
-		console.log(n + ", " + number + ": " + text);
+
+		//console.log(n + ", " + number + ": " + text);
 
 
 		if (n != number) {
@@ -133,6 +131,9 @@ io.on('connection', function(socket){
 				console.log('new edit', JSON.stringify(edit));
 			}
 		}
+
+		console.log("got edit", JSON.stringify(edit));
+		console.log(text + " -> " + change.applyEditPath(text, edit));
 		text = change.applyEditPath(text, edit);
 		change.applyEditPathToColors(colors, edit, input['color']);
 
