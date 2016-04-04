@@ -320,6 +320,63 @@
 		setTimeout(passOrFail, time+100);
 	}
 
+	function randomCapitalLetter() {
+		return String.fromCharCode(parseInt(Math.random()*26) + 65);
+	}
+
+	function randomLowerLetter() {
+		return String.fromCharCode(parseInt(Math.random()*26) + 97);
+	}
+
+	// will modify the text in the given textarea within the given range
+	// this function is used for automated testing
+	function modify(textarea, range, ch) {
+		var originalRange = range;
+		var text = getText(textarea);
+		if (!range) {
+			range = [0, text.length]
+		}
+		// ['sd', true] will be a range from the index of 'sd' and on
+		// ['sd', false] will be a range from 0 to the index of 'sd'
+		// if the given string is not found, the range will be from the beginning to the end
+		if (typeof(range[0]) == "string") {
+			var index = text.indexOf(range[0]);
+			console.log("index is " + index);
+			if (index == -1) {
+				range = [0, text.length];
+			}
+			else {
+				if (range[1]) {
+					range = [index+1, text.length];
+				}
+				else {
+					range = [0, index];
+				}
+			}
+		}
+		var rangeLength = range[1] - range[0];
+		var position = Math.max(0, parseInt(range[0] + Math.random() * rangeLength));
+		var length = parseInt(text.length*Math.random() * .01 + Math.random() * 5);
+		if (position + length >= range[1]) {
+			length = Math.max(0, range[1] - position);
+		}
+		console.log(JSON.stringify([position, length]));
+		// 50-50 chance of adding or deleting
+		if (Math.random() > .5) {
+			if (length == 0) length = 1;
+			var toAdd = "";
+			for (var i = 0; i < length; i++) {
+				toAdd += ch();
+			}
+			text = text.substring(0, position) + toAdd + text.substring(position);
+		}
+		else {
+			text = text.substring(0, position) + text.substring(position + length);
+		}
+		setText(text, textarea);
+		setTimeout(function() { modify(textarea, originalRange, ch); }, 100);
+
+	}
 
 	function test2(isMaster, number) {
 
