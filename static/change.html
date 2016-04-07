@@ -355,15 +355,11 @@
 			}
 		}
 		var rangeLength = range[1] - range[0];
-		var position = Math.max(0, parseInt(range[0] + Math.random() * rangeLength));
+		var position = parseInt(range[0] + Math.random() * rangeLength);
 		var length = parseInt(text.length*Math.random() * .01 + Math.random() * 5);
-		if (position + length >= range[1]) {
-			length = Math.max(0, range[1] - position);
-		}
-		console.log(JSON.stringify([position, length]));
+				console.log(JSON.stringify([position, length]));
 		// 50-50 chance of adding or deleting
 		if (Math.random() > .5) {
-			if (length == 0) length = 1;
 			var toAdd = "";
 			for (var i = 0; i < length; i++) {
 				toAdd += ch();
@@ -371,6 +367,13 @@
 			text = text.substring(0, position) + toAdd + text.substring(position);
 		}
 		else {
+			if (position + length > range[1]) { // if we would delete text past the range
+				position = range[1] - length; // then move the position back
+				if (position < range[0]) { // but if our position is then before our range
+					position = range[0]; // set the position to the begginning of the range
+					length = Math.max(0, range[1] - position); // and set the length to the length of the range
+				}
+			}
 			text = text.substring(0, position) + text.substring(position + length);
 		}
 		setText(text, textarea);
