@@ -6,25 +6,29 @@
 <script src="/libs/socket.io-1.2.0.js"></script>
 <script src="/libs/util.js"></script>
 <script src="/libs/jquery.min.js"></script>
+<script src="/libs/valueStore.js"></script>
 <script type="text/javascript">
 
 	var stop = false;
 
+	var cycleLen = 1000;
+
 	function after(num) {
-		return (num + 1) % 1000;
+		return (num + 1) % cycleLen;
 	}
 
+	var stopAllJavascript = false;
 	var textarea = document.getElementById("textarea");
 
 	var socket = io();
 
-	var value = "", localValue = "", colors = [], localColors = [];
-
+	var localValue = "", localColors = [], valueStore, editChain = [], submittedEdit;
+	
 	var inited = false, editNumber, expectingNumber, expectingResponse = false, lastedSubmittedNumber;
 
 	var history = {};
 
-	var color;
+	var color, user;
 
 	socket.on('init', function(data) {
 		console.log('initing with');
@@ -37,10 +41,11 @@
 
 
 		setText(text, textarea, colorData);
-		value = localValue = text;
-		colors = colorData;
-		localColors = copyColors(colors);
+		localValue = text;
+		localColors = copyColors(colorData);
 
+		valueStore = new ValueStore(text, colorData, cycleLen);
+		
 		editNumber = data['number'];
 		expectingNumber = after(editNumber);
 
@@ -48,13 +53,15 @@
 	});
 
 	socket.on('inputResponse', function(data) {
+		return;
 		var number = data.number;
 		var hash = data.hash;
 
-		expectingResponse = false;
+		
 		if (number == expectingNumber) {
 			console.log('expected input response recieved: ' + number);
 
+			//valueStore.addEdit(data['edit'], color);
 
 			if (hash != history[lastedSubmittedNumber].hash) {
 				stop = true;
@@ -62,6 +69,7 @@
 				console.log('lastedSubmittedNumber: ' + lastedSubmittedNumber);
 				console.log("we have: " + history[lastedSubmittedNumber].val);
 				console.log("it has : " + data.text);
+				stopAllJavascript = true;
 				alert('hashmiss');
 				throw new Error("Hash miss");
 				
@@ -80,19 +88,22 @@
 	});
 
 	socket.on('edit', function(data) {
+		return;
 		var number = data.number;
 		var edit = data.edit;
 		var hash = data.hash;
 		
 		if (expectingResponse) {
 			if (expectingNumber == number) {
+				console.log("scenerio 1");
 				var cursor = getCursor(textarea);
 
 				var currentText = getText(textarea);
 				var difference = diff(localValue, currentText); // any new edits our user has made
 
 				console.log("unexpected edit recieved: " + number + " " + JSON.stringify(edit));
-				console.log('diff: ', difference);
+				console.log('diff: ', JSON.stringify(difference));
+				
 				var thisUsersEdit = history[lastedSubmittedNumber];
 				var previous = applyEditPath(value, thisUsersEdit.reversed); // undo the last logged edit our user made
 				var next = applyEditPath(previous, edit); // apply the edit another user made
@@ -115,6 +126,7 @@
 					console.log('expectingNumber: ' + expectingNumber);
 					console.log("we have: " + value);
 					console.log("it has : " + data.text);
+					stopAllJavascript = true;
 					alert('hashmiss');
 
 
@@ -155,36 +167,36 @@
 
 			}
 			else {
+				console.log("scenerio 2");
 				console.log('Out of order edit recieved while expecting a response: ' + number + '. expecting ' + expectingNumber);
 			}
 		}
 		else {
 			socket.emit('editRecieved', {number:number});
 			if (expectingNumber == number) {
+				console.log("scenerio 3");
 				var cursor = getCursor(textarea);
 				console.log('expected edit recieved: ' + number + " " + JSON.stringify(edit));
-
 
 
 				var currentText = getText(textarea);
 				var difference = diff(localValue, currentText); // any new edits our user has made
 				console.log('diff: ' + JSON.stringify(difference));
 
-
-				value = applyEditPath(value, edit);
 				localValue = applyEditPath(localValue, edit);
-
-				applyEditPathToColors(colors, edit, data['color']);
 				applyEditPathToColors(localColors, edit, data['color']);
 
-				var h = hashString(value);
+				valueStore.addEdit(edit, data['color']);
+
+				var h = hashString(valueStore.getText());
 				if (hash != h) {
 					stop = true;
 
 					console.log('hash miss, ' + hash + ' vs ' + h);
 					console.log('expectingNumber: ' + expectingNumber);
-					console.log("we have: " + value);
+					console.log("we have: " + valueStore.getText());
 					console.log("it has : " + data.text);
+					stopAllJavascript = true;
 					alert('hashmiss');
 
 
@@ -209,15 +221,75 @@
 				setCursor(cursor, textarea);
 			}
 			else {
+				console.log("scenerio 4");
 				console.log('edit recieved out of order while expecting an edit: ' + number + '. expecting ' + expectingNumber);
 			}
 		}
+	});
 
-		
+	socket.on('editConfirmed', function(editData) {
+		console.log(JSON.stringify(editData));
+		var editUser = editData['user'];
+		var editColor = editData['color'];
+		var editNumber_ = editData['number']
+		var offsetDepth = editData['offsetDepth'];
+		var edit = editData['edit'];
 
-		
+		history[editNumber_] = editData;
+		valueStore.addEdit(edit, editColor, history, editNumber_, offsetDepth);
 
-		
+		if (expectingResponse) { 
+			if (editColor == color) {
+				// don't worry about difference
+				// localValue is correct
+				expectingResponse = false;
+				editNumber = editNumber_;
+				expectingNumber = after(editNumber);
+			}
+			else {
+				// find difference b/t text and localValue
+				// apply offsets of this newer edit to this user's older edit
+				// apply this user's older edit to copy of valueStore's value
+				// apply offsets of this newer edit to difference
+				// apply difference to localValue, and set text to localValue
+
+				var currentText = getText(textarea);
+				var difference = diff(localValue, currentText);
+
+
+			}
+		}
+		else {
+			if (editColor == color) {
+				// the server says this user made an edit
+				// that we don't think we made
+				// this should never happen
+			}
+			else {
+				// find difference b/t text and localValue
+				// set localValue to that of valueStore
+				// apply offset of edit to difference
+				// apply difference to localValue
+				// set text to localValue
+
+				var currentText = getText(textarea);
+				var difference = diff(localValue, currentText); 
+
+				localValue = valueStore.getText();
+				localColors = valueStore.getColors();
+
+				applyOffsets(difference, edit);
+
+				localValue = applyEditPath(localValue, difference);
+				applyEditPathToColors(localColors, difference, editColor);
+
+				setText(localValue, textarea, localColors);
+
+				editNumber = editNumber_;
+				expectingNumber = after(editNumber_); 
+			}
+		}
+
 	});
 
 	var checkTime = 100;
@@ -226,12 +298,11 @@
 			setTimeout(check, checkTime);
 			return;
 		}
-		//console.log('checking');
-
+		
 		removeEmptyDivs(textarea);
 
-		var text = getText(textarea).replace(/ /g, ' '); // char code 160 to be replaced with 32
-		var edit = diff(value, text);
+		var text = getText(textarea); // char code 160 to be replaced with 32
+		var edit = diff(localValue, text);
 
 		if (edit.length == 0) {
 			setTimeout(check, checkTime);
@@ -240,23 +311,24 @@
 		console.log('this   ', JSON.stringify(edit));
 		//finalize(edit, value, getCursor(textarea));
 		//console.log('becomes', JSON.stringify(edit));
-		console.log(value + ' vs ' + text);
+		console.log(valueStore.getText() + ' vs ' + text);
 
-		var reversed = reverseEditPath(edit, value, text);
-		history[editNumber] = {reversed:reversed, normal:edit, hash:hashString(text), val:text};
+		var reversed = reverseEditPath(edit, valueStore.getText(), text);
+		//history[editNumber] = {reversed:reversed, normal:edit, hash:hashString(text), val:text};
 
 		lastedSubmittedNumber = editNumber;
 
-		value = text;
 		localValue = text;
 
-		applyEditPathToColors(colors, edit, color);
-		var correct = checkColors(colors, textarea);
+		editChain = [[edit, 0, color]];
+
+		applyEditPathToColors(localColors, edit, color);
+
+		var correct = checkColors(localColors, textarea);
 		if (!correct) {
 			//console.log('incorrect');
 			var p = getCursor(textarea);
-			setText(value, textarea, colors);
-			localColors = copyColors(colors);
+			setText(text, textarea, localColors);
 			setCursor(p, textarea);
 		}
 
@@ -268,7 +340,7 @@
 		socket.emit('input', data);
 		console.log('sending ' + JSON.stringify(edit) + " with num: " + editNumber);
 		expectingResponse = true;
-
+		submittedEdit = edit;
 
 
 		setTimeout(check, checkTime);
@@ -326,59 +398,6 @@
 
 	function randomLowerLetter() {
 		return String.fromCharCode(parseInt(Math.random()*26) + 97);
-	}
-
-	// will modify the text in the given textarea within the given range
-	// this function is used for automated testing
-	function modify(textarea, range, ch) {
-		var originalRange = range;
-		var text = getText(textarea);
-		if (!range) {
-			range = [0, text.length]
-		}
-		// ['sd', true] will be a range from the index of 'sd' and on
-		// ['sd', false] will be a range from 0 to the index of 'sd'
-		// if the given string is not found, the range will be from the beginning to the end
-		if (typeof(range[0]) == "string") {
-			var index = text.indexOf(range[0]);
-			console.log("index is " + index);
-			if (index == -1) {
-				range = [0, text.length];
-			}
-			else {
-				if (range[1]) {
-					range = [index+1, text.length];
-				}
-				else {
-					range = [0, index];
-				}
-			}
-		}
-		var rangeLength = range[1] - range[0];
-		var position = parseInt(range[0] + Math.random() * rangeLength);
-		var length = parseInt(text.length*Math.random() * .01 + Math.random() * 5);
-				console.log(JSON.stringify([position, length]));
-		// 50-50 chance of adding or deleting
-		if (Math.random() > .5) {
-			var toAdd = "";
-			for (var i = 0; i < length; i++) {
-				toAdd += ch();
-			}
-			text = text.substring(0, position) + toAdd + text.substring(position);
-		}
-		else {
-			if (position + length > range[1]) { // if we would delete text past the range
-				position = range[1] - length; // then move the position back
-				if (position < range[0]) { // but if our position is then before our range
-					position = range[0]; // set the position to the begginning of the range
-					length = Math.max(0, range[1] - position); // and set the length to the length of the range
-				}
-			}
-			text = text.substring(0, position) + text.substring(position + length);
-		}
-		setText(text, textarea);
-		setTimeout(function() { modify(textarea, originalRange, ch); }, 100);
-
 	}
 
 	function test2(isMaster, number) {

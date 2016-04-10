@@ -122,7 +122,7 @@ io.on('connection', function(socket){
 
 
 		//console.log(n + ", " + number + ": " + text);
-
+		console.log("got edit", n, "at", number, JSON.stringify(edit));
 
 		if (n != number) {
 			for (var i = n; n != number; n = (n+1)%cycleLen) {
@@ -132,7 +132,10 @@ io.on('connection', function(socket){
 			}
 		}
 
-		console.log("got edit", JSON.stringify(edit));
+		var offsetDepth = Math.abs(number - n);
+		if (offsetDepth > cycleLen/2) offsetDepth = cycleLen - offsetDepth;
+
+		
 		console.log(text + " -> " + change.applyEditPath(text, edit));
 		text = change.applyEditPath(text, edit);
 		change.applyEditPathToColors(colors, edit, input['color']);
@@ -147,7 +150,9 @@ io.on('connection', function(socket){
 		var hash = change.hashString(text);
 
 		socket.broadcast.emit('edit', {number: number, edit:edit, hash:hash, text:text, color:input['color']});
-		socket.emit('inputResponse', {number:number, hash:hash, text:text});
+		socket.emit('inputResponse', {number:number, hash:hash, text:text, edit:edit});
+
+		io.emit('editConfirmed', {user:"", color:input['color'], number:number, offsetDepth:offsetDepth, edit:edit});
 	});
 
 	socket.on('editRecieved', function(data) {

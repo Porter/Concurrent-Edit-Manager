@@ -47,7 +47,7 @@ function getText(div) {
 		lastName = name;
 	}
 
-	return texts.join('\n');
+	return texts.join('\n').replace(/ /g, ' ');
 }
 
 function colorsLength(colors) {
@@ -368,8 +368,9 @@ function copyColors(colors) {
 	}
 	return c;
 }
+exports.copyColors = copyColors;
 
-copyEdit = copyColors;
+exports.copyEdit = copyEdit = copyColors;
 
 
 function applyOffsets(second, first) {
@@ -400,3 +401,57 @@ function applyOffsetToCursor(cursor, edit) {
 		}
 	}
 }
+
+// will modify the text in the given textarea within the given range
+// this function is used for automated testing
+function modify(textarea, range, ch) {
+	if (stopAllJavascript) return;
+	var originalRange = range;
+	var text = getText(textarea);
+	if (!range) {
+		range = [0, text.length]
+	}
+	// ['sd', true] will be a range from the index of 'sd' and on
+	// ['sd', false] will be a range from 0 to the index of 'sd'
+	// if the given string is not found, the range will be from the beginning to the end
+	if (typeof(range[0]) == "string") {
+		var index = text.indexOf(range[0]);
+		if (index == -1) {
+			range = [0, text.length];
+		}
+		else {
+			if (range[1]) {
+				range = [index+1, text.length];
+			}
+			else {
+				range = [0, index];
+			}
+		}
+	}
+	var rangeLength = range[1] - range[0];
+	var position = parseInt(range[0] + Math.random() * rangeLength);
+	var length = parseInt(text.length*Math.random() * .01 + Math.random() * 5);
+	// 50-50 chance of adding or deleting
+	if (Math.random() > .5) {
+		var toAdd = "";
+		for (var i = 0; i < length; i++) {
+			toAdd += ch();
+		}
+		text = text.substring(0, position) + toAdd + text.substring(position);
+	}
+	else {
+		if (position + length > range[1]) { // if we would delete text past the range
+			position = range[1] - length; // then move the position back
+			if (position < range[0]) { // but if our position is then before our range
+				position = range[0]; // set the position to the begginning of the range
+				length = Math.max(0, range[1] - position); // and set the length to the length of the range
+			}
+		}
+		text = text.substring(0, position) + text.substring(position + length);
+	}
+	setText(text, textarea);
+	setTimeout(function() { modify(textarea, originalRange, ch); }, 100);
+
+}
+
+
