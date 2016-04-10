@@ -52,181 +52,6 @@
 		inited = true;
 	});
 
-	socket.on('inputResponse', function(data) {
-		return;
-		var number = data.number;
-		var hash = data.hash;
-
-		
-		if (number == expectingNumber) {
-			console.log('expected input response recieved: ' + number);
-
-			//valueStore.addEdit(data['edit'], color);
-
-			if (hash != history[lastedSubmittedNumber].hash) {
-				stop = true;
-				console.log('hash miss, ' + hash + ' vs ' + history[lastedSubmittedNumber].hash);
-				console.log('lastedSubmittedNumber: ' + lastedSubmittedNumber);
-				console.log("we have: " + history[lastedSubmittedNumber].val);
-				console.log("it has : " + data.text);
-				stopAllJavascript = true;
-				alert('hashmiss');
-				throw new Error("Hash miss");
-				
-			}
-
-
-			history[lastedSubmittedNumber] = undefined; // we don't need it anymore
-
-			editNumber = number;
-			expectingNumber = after(number);
-
-		}
-		else {
-			console.log('Out of order input response. Got ' + number + ', expecting ' + expectingNumber);
-		}
-	});
-
-	socket.on('edit', function(data) {
-		return;
-		var number = data.number;
-		var edit = data.edit;
-		var hash = data.hash;
-		
-		if (expectingResponse) {
-			if (expectingNumber == number) {
-				console.log("scenerio 1");
-				var cursor = getCursor(textarea);
-
-				var currentText = getText(textarea);
-				var difference = diff(localValue, currentText); // any new edits our user has made
-
-				console.log("unexpected edit recieved: " + number + " " + JSON.stringify(edit));
-				console.log('diff: ', JSON.stringify(difference));
-				
-				var thisUsersEdit = history[lastedSubmittedNumber];
-				var previous = applyEditPath(value, thisUsersEdit.reversed); // undo the last logged edit our user made
-				var next = applyEditPath(previous, edit); // apply the edit another user made
-
-
-				applyEditPathToColors(localColors, thisUsersEdit.reversed, color); // do the same for the colors
-				applyEditPathToColors(colors, thisUsersEdit.reversed, color); // do the same for the colors
-				
-				
-				applyEditPathToColors(localColors, edit, data['color']);
-				applyEditPathToColors(colors, edit, data['color']); // do the same for the colors
-
-
-				history[number] = {hash:hashString(next), val:next};
-				var h = hashString(next);
-				if (hash != h) {
-					stop = true;
-
-					console.log('hash miss, ' + hash + ' vs ' + h);
-					console.log('expectingNumber: ' + expectingNumber);
-					console.log("we have: " + value);
-					console.log("it has : " + data.text);
-					stopAllJavascript = true;
-					alert('hashmiss');
-
-
-					throw new Error("Hash miss");
-
-				}
-
-
-				console.log("edit: ", JSON.stringify(edit));
-				console.log("b4", JSON.stringify(thisUsersEdit.normal));
-				var redo = copyEdit(thisUsersEdit.normal);
-				applyOffsets(redo, edit);
-				console.log("af", JSON.stringify(redo));
-
-				next = applyEditPath(next, redo); // and then redo the edit our user made
-				applyEditPathToColors(localColors, redo, color); // same for color
-				applyEditPathToColors(colors, redo, color); // same for color
-
-				thisUsersEdit.hash = hashString(next);
-				thisUsersEdit.val = next;
-				value = next;
-
-				applyOffsets(difference, edit);
-
-
-				next = applyEditPath(next, difference); // and lastly apply any new edits our user has made
-				applyEditPathToColors(localColors, difference, color);
-
-				setText(next, textarea, localColors);
-
-				localValue = next;
-
-				editNumber = number;
-				expectingNumber = after(number);
-
-				applyOffsetToCursor(cursor, edit);
-				setCursor(cursor, textarea);
-
-			}
-			else {
-				console.log("scenerio 2");
-				console.log('Out of order edit recieved while expecting a response: ' + number + '. expecting ' + expectingNumber);
-			}
-		}
-		else {
-			socket.emit('editRecieved', {number:number});
-			if (expectingNumber == number) {
-				console.log("scenerio 3");
-				var cursor = getCursor(textarea);
-				console.log('expected edit recieved: ' + number + " " + JSON.stringify(edit));
-
-
-				var currentText = getText(textarea);
-				var difference = diff(localValue, currentText); // any new edits our user has made
-				console.log('diff: ' + JSON.stringify(difference));
-
-				localValue = applyEditPath(localValue, edit);
-				applyEditPathToColors(localColors, edit, data['color']);
-
-				valueStore.addEdit(edit, data['color']);
-
-				var h = hashString(valueStore.getText());
-				if (hash != h) {
-					stop = true;
-
-					console.log('hash miss, ' + hash + ' vs ' + h);
-					console.log('expectingNumber: ' + expectingNumber);
-					console.log("we have: " + valueStore.getText());
-					console.log("it has : " + data.text);
-					stopAllJavascript = true;
-					alert('hashmiss');
-
-
-					throw new Error("Hash miss");
-
-				}
-
-				applyOffsets(difference, edit);
-				console.log('diff after offsets', JSON.stringify(difference));
-
-				var newText = applyEditPath(localValue, difference);
-				applyEditPathToColors(localColors, difference, color);
-
-				setText(newText, textarea, localColors);
-
-				localValue = newText;
-
-
-				editNumber = number;
-				expectingNumber = after(number);
-				applyOffsetToCursor(cursor, edit);
-				setCursor(cursor, textarea);
-			}
-			else {
-				console.log("scenerio 4");
-				console.log('edit recieved out of order while expecting an edit: ' + number + '. expecting ' + expectingNumber);
-			}
-		}
-	});
-
 	socket.on('editConfirmed', function(editData) {
 		console.log(JSON.stringify(editData));
 		var editUser = editData['user'];
@@ -256,7 +81,22 @@
 				var currentText = getText(textarea);
 				var difference = diff(localValue, currentText);
 
+				var thisUsersEdit = copyEdit(submittedEdit);
+				applyOffsets(thisUsersEdit, edit);
 
+				localValue = applyEditPath(valueStore.getText(), thisUsersEdit);
+				localColors = valueStore.getColors();
+				applyEditPathToColors(localColors, thisUsersEdit, color);
+
+				applyOffsets(difference, edit);
+
+				localValue = applyEditPath(localValue, edit);
+				applyEditPathToColors(localColors, edit, color);
+
+				setText(localValue, textarea, localColors);
+
+				editNumber = editNumber_;
+				expectingNumber = after(editNumber);
 			}
 		}
 		else {
@@ -264,6 +104,7 @@
 				// the server says this user made an edit
 				// that we don't think we made
 				// this should never happen
+				
 			}
 			else {
 				// find difference b/t text and localValue
