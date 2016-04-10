@@ -78,6 +78,8 @@
 				// apply offsets of this newer edit to difference
 				// apply difference to localValue, and set text to localValue
 
+				var cursor = getCursor(textarea);
+
 				var currentText = getText(textarea);
 				var difference = diff(localValue, currentText);
 
@@ -97,6 +99,10 @@
 
 				editNumber = editNumber_;
 				expectingNumber = after(editNumber);
+
+				applyOffsetToCursor(cursor, edit);
+
+				setCursor(cursor, textarea);
 			}
 		}
 		else {
@@ -104,7 +110,7 @@
 				// the server says this user made an edit
 				// that we don't think we made
 				// this should never happen
-				
+
 			}
 			else {
 				// find difference b/t text and localValue
@@ -112,6 +118,8 @@
 				// apply offset of edit to difference
 				// apply difference to localValue
 				// set text to localValue
+
+				var cursor = getCursor(textarea);
 
 				var currentText = getText(textarea);
 				var difference = diff(localValue, currentText); 
@@ -126,12 +134,27 @@
 
 				setText(localValue, textarea, localColors);
 
+				applyOffsetToCursor(cursor, edit);
+
 				editNumber = editNumber_;
-				expectingNumber = after(editNumber_); 
+				expectingNumber = after(editNumber_);
+
+				setCursor(cursor, textarea); 
 			}
 		}
 
+		if (editData['hash'] != hashString(valueStore.getText())) {
+			console.log("vs: " + valueStore.getText());
+			console.log('sv: ' + editData['text']);
+			alert('hash miss');
+		}
+
+		socket.emit('editConfirmationRecieved', {number:editNumber});
 	});
+
+	function checkValueStore() {
+		return getText(textarea) == valueStore.getText();
+	}
 
 	var checkTime = 100;
 	function check() {

@@ -141,7 +141,6 @@ io.on('connection', function(socket){
 		change.applyEditPathToColors(colors, edit, input['color']);
 
 		edits[number] = edit;
-		socket.lastEdit = number;
 		cleanUpEdits();
 
 
@@ -152,10 +151,11 @@ io.on('connection', function(socket){
 		socket.broadcast.emit('edit', {number: number, edit:edit, hash:hash, text:text, color:input['color']});
 		socket.emit('inputResponse', {number:number, hash:hash, text:text, edit:edit});
 
-		io.emit('editConfirmed', {user:"", color:input['color'], number:number, offsetDepth:offsetDepth, edit:edit});
+		io.emit('editConfirmed', {user:"", color:input['color'], number:number, offsetDepth:offsetDepth, edit:edit, hash:hash,
+					text:text});
 	});
 
-	socket.on('editRecieved', function(data) {
+	socket.on('editConfirmationRecieved', function(data) {
 		socket.lastEdit = data.number;
 		cleanUpEdits();
 
