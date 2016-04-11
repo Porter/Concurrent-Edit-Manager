@@ -53,6 +53,7 @@
 	});
 
 	socket.on('editConfirmed', function(editData) {
+		if (stopAllJavascript) return;
 		console.log(JSON.stringify(editData));
 		var editUser = editData['user'];
 		var editColor = editData['color'];
