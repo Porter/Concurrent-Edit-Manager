@@ -22,9 +22,9 @@
 
 	var socket = io();
 
-	var localValue = "", localColors = [], valueStore, editChain = [], submittedEdit;
+	var localValue = "", localColors = [], valueStore, differenceArray = [], submittedEdit;
 	
-	var inited = false, editNumber, expectingNumber, expectingResponse = false, lastedSubmittedNumber;
+	var inited = false, editNumber, expectingNumber, expectingResponse = false, lastSubmittedNumber, lastSetText;
 
 	var history = {};
 
@@ -41,6 +41,8 @@
 
 
 		setText(text, textarea, colorData);
+		lastSetText = text;
+
 		localValue = text;
 		localColors = copyColors(colorData);
 
@@ -82,21 +84,46 @@
 				var cursor = getCursor(textarea);
 
 				var currentText = getText(textarea);
-				var difference = diff(localValue, currentText);
+				var difference = diff(lastSetText, currentText);
 
-				var thisUsersEdit = copyEdit(submittedEdit);
-				applyOffsets(thisUsersEdit, edit);
+				differenceArray.push(difference);
 
-				localValue = applyEditPath(valueStore.getText(), thisUsersEdit);
-				localColors = valueStore.getColors();
-				applyEditPathToColors(localColors, thisUsersEdit, color);
+				
+				if (submittedEdit) {
+					var thisUsersEdit = copyEdit(submittedEdit);
+					console.log('thisUsersEdit b4 ', JSON.stringify(thisUsersEdit));
 
-				applyOffsets(difference, edit);
+					var number = lastSubmittedNumber;
+					do {
+						number = after(number);
+						applyOffsets(thisUsersEdit, history[number]['edit']);
+					} while (number != editNumber_)
+					
+					console.log('thisUsersEdit af ', JSON.stringify(thisUsersEdit));
 
-				localValue = applyEditPath(localValue, edit);
-				applyEditPathToColors(localColors, edit, color);
+					localValue = applyEditPath(valueStore.getText(), thisUsersEdit);
+					localColors = valueStore.getColors();
+					applyEditPathToColors(localColors, thisUsersEdit, color);
+				}
+				else {
+					localValue = valueStore.getText();
+					localColors = valueStore.getColors();
+				}
+
+				
+				for (var i = 0; i < differenceArray.length; i++) {
+					applyOffsets(differenceArray[i], edit);
+				}
+				console.log('differenceArray', JSON.stringify(differenceArray));
+
+				for (var i = 0; i < differenceArray.length; i++) {
+					localValue = applyEditPath(localValue, differenceArray[i]);
+					applyEditPathToColors(localColors, differenceArray[i], color);
+				}
+				
 
 				setText(localValue, textarea, localColors);
+				lastSetText = localValue;
 
 				editNumber = editNumber_;
 				expectingNumber = after(editNumber);
@@ -123,17 +150,29 @@
 				var cursor = getCursor(textarea);
 
 				var currentText = getText(textarea);
-				var difference = diff(localValue, currentText); 
+				var difference = diff(lastSetText, currentText); 
+
+				differenceArray.push(difference);
+
+				console.log('lst: ' + lastSetText);
+				console.log('ct : ' + currentText);
+				console.log('dif: ' + JSON.stringify(difference));
+				console.log('differenceArray b4', JSON.stringify(differenceArray));
+				for (var i = 0; i < differenceArray.length; i++) {
+					applyOffsets(differenceArray[i], edit);	
+				}
+				console.log('differenceArray af', JSON.stringify(differenceArray));
 
 				localValue = valueStore.getText();
 				localColors = valueStore.getColors();
 
-				applyOffsets(difference, edit);
-
-				localValue = applyEditPath(localValue, difference);
-				applyEditPathToColors(localColors, difference, editColor);
+				for (var i = 0; i < differenceArray.length; i++) {
+					localValue = applyEditPath(localValue, differenceArray[i]);
+					applyEditPathToColors(localColors, differenceArray[i], editColor);
+				}
 
 				setText(localValue, textarea, localColors);
+				lastSetText = localValue;
 
 				applyOffsetToCursor(cursor, edit);
 
@@ -150,6 +189,14 @@
 			alert('hash miss');
 		}
 
+		var lowest = editData['lowest'];
+		for (var i = 0; i < cycleLen/2; i++) {
+			delete history[lowest];
+
+			lowest--;
+			if (lowest < 0) lowest += cycleLen;
+		}
+
 		socket.emit('editConfirmationRecieved', {number:editNumber});
 	});
 
@@ -163,37 +210,48 @@
 			setTimeout(check, checkTime);
 			return;
 		}
+
+		if (differenceArray.length > 0) {
+			console.log("clearing differenceArray");
+		}
+		differenceArray = [];
+		
 		
 		removeEmptyDivs(textarea);
 
 		var text = getText(textarea); // char code 160 to be replaced with 32
-		var edit = diff(localValue, text);
+		var edit = diff(valueStore.getText(), text);
 
 		if (edit.length == 0) {
 			setTimeout(check, checkTime);
 			return;
 		}
+
 		console.log('this   ', JSON.stringify(edit));
 		//finalize(edit, value, getCursor(textarea));
 		//console.log('becomes', JSON.stringify(edit));
-		console.log(valueStore.getText() + ' vs ' + text);
+		console.log('gt:' + text);
+		console.log('lv:' + localValue);
+		console.log('vs:' + valueStore.getText());
 
 		var reversed = reverseEditPath(edit, valueStore.getText(), text);
 		//history[editNumber] = {reversed:reversed, normal:edit, hash:hashString(text), val:text};
 
-		lastedSubmittedNumber = editNumber;
+		lastSubmittedNumber = editNumber;
 
 		localValue = text;
 
-		editChain = [[edit, 0, color]];
-
+		localColors = valueStore.getColors();
 		applyEditPathToColors(localColors, edit, color);
 
 		var correct = checkColors(localColors, textarea);
 		if (!correct) {
 			//console.log('incorrect');
 			var p = getCursor(textarea);
+			
 			setText(text, textarea, localColors);
+			lastSetText = text;
+
 			setCursor(p, textarea);
 		}
 

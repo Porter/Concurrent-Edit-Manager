@@ -78,8 +78,6 @@ function cleanUpEdits(clients) {
 	if (lowest == undefined) return;
 
 	for (var i = 1; i < clients.length; i++) {
-		//lowest = 1
-		// lastEdit = 998
 
 		var differenceForward = clients[i].lastEdit - lowest;
 		var differenceBackward = -differenceForward;
@@ -92,12 +90,16 @@ function cleanUpEdits(clients) {
 		}
 	}
 
+	var r = lowest;
+
 	for (var i = 0; i < cycleLen/2; i++) {
 		lowest--;
 		if (lowest < 0) lowest += cycleLen;
 
 		edits[lowest] = undefined;
 	}
+
+	return ((r-1) + cycleLen) % cycleLen;
 
 }
 
@@ -141,18 +143,15 @@ io.on('connection', function(socket){
 		change.applyEditPathToColors(colors, edit, input['color']);
 
 		edits[number] = edit;
-		cleanUpEdits();
+		var lowest = cleanUpEdits();
 
 
 		number = (number + 1) % cycleLen;
 
 		var hash = change.hashString(text);
 
-		socket.broadcast.emit('edit', {number: number, edit:edit, hash:hash, text:text, color:input['color']});
-		socket.emit('inputResponse', {number:number, hash:hash, text:text, edit:edit});
-
 		io.emit('editConfirmed', {user:"", color:input['color'], number:number, offsetDepth:offsetDepth, edit:edit, hash:hash,
-					text:text});
+					text:text, lowest:lowest});
 	});
 
 	socket.on('editConfirmationRecieved', function(data) {

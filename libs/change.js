@@ -103,6 +103,7 @@ function applyEditPath(string, path) {
 
 		if (num > string.length) { 
 			console.log("p[1] overflow");
+		    console.log((new Error()).stack);
 		}
 	}
 	return c + string.substring(last);

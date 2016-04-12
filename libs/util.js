@@ -374,16 +374,16 @@ exports.copyEdit = copyEdit = copyColors;
 
 
 function applyOffsets(second, first) {
-	var offset = 0;
 	for (var i = 0; i < second.length; i++) {
+
+		var location = second[i][1];
 		for (var n = 0; n < first.length; n++) {
-			if (first[n][1] > second[i][1] - offset) break;
+			
+			if (first[n][1] > location) break;
 
 			var off = first[n][0] == "down" ? 1 : -1;
 
 			second[i][1] += off;
-
-			offset += off;
 		}
 	}
 }
