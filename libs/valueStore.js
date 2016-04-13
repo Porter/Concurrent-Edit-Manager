@@ -3,8 +3,8 @@ var exports;
 if (typeof(module) != "undefined") exports = module.exports = {};
 else exports = {}
 
-function previousNumber(num, cycleLen) {
-	return (cycleLen + num - 1)%cycleLen;
+function nextNumber(num, cycleLen) {
+	return (cycleLen + num + 1)%cycleLen;
 }
 
 function ValueStore(currentText, colors, cycleLen) {
@@ -23,10 +23,12 @@ ValueStore.prototype.addEdit = function(edit, usersColor, history, editNumber, o
 
 	edit = copyEdit(edit); // don't want to modify the original
 
-	editNumber = previousNumber(editNumber);
+	editNumber = ((editNumber - offsetDepth) + cycleLen) % cycleLen;
 
-	for (var i = 0; i < offsetDepth; i++, editNumber = previousNumber(editNumber)) {
-		applyOffset(edit, history[editNumber]['edit']);
+	for (var i = 0; i < offsetDepth; i++, editNumber = nextNumber(editNumber, this.cycleLen)) {
+		console.log('applying ', JSON.stringify(history[editNumber]['edit']));
+		applyOffsets(edit, history[editNumber]['edit']);
+		console.log('new edit ', JSON.stringify(edit));
 	}
 
 	this.currentText = applyEditPath(this.currentText, edit);

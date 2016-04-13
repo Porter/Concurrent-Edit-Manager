@@ -378,8 +378,17 @@ function applyOffsets(second, first) {
 
 		var location = second[i][1];
 		for (var n = 0; n < first.length; n++) {
-			
+
+			if (first[n][1] == location && first[n][0] == "right" && second[i][0] == "right") { // if two people delete the same thing
+				// then delete the second person's deletion
+				second.splice(i, 1);
+				i--;
+				break;
+			}
+
 			if (first[n][1] > location) break;
+
+			if (first[n][0] == "right" && first[n][1] == location) break;
 
 			var off = first[n][0] == "down" ? 1 : -1;
 

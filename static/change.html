@@ -186,6 +186,8 @@
 		if (editData['hash'] != hashString(valueStore.getText())) {
 			console.log("vs: " + valueStore.getText());
 			console.log('sv: ' + editData['text']);
+			stopAllJavascript = true;
+			throw new Error('hash miss');
 			alert('hash miss');
 		}
 
