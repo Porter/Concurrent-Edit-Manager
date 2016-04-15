@@ -10,4 +10,4 @@ The server recieves edits from a client, and sends them to to all other clients.
 
 ###How it works: Client Side
 
-The client checks a div for changes, and sends those to the server. 
+The client checks a div for changes, and sends those to the server. Operation transformation is also used client side if the server says that the client's edit has been offset.
