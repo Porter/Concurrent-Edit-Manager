@@ -193,12 +193,13 @@
 
 		var lowest = editData['lowest'];
 		for (var i = 0; i < cycleLen/2; i++) {
-			delete history[lowest];
-
 			lowest--;
 			if (lowest < 0) lowest += cycleLen;
+
+			delete history[lowest];
 		}
 
+		// let the server know we've processed this edit
 		socket.emit('editConfirmationRecieved', {number:editNumber});
 	});
 

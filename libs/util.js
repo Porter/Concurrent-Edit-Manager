@@ -370,9 +370,10 @@ function copyColors(colors) {
 }
 exports.copyColors = copyColors;
 
-exports.copyEdit = copyEdit = copyColors;
+exports.copyEdit = copyEdit = copyColors; // colors and edits are both arrays of arrays
 
 
+// This will apply the offsets of an edit that came first so that the second edit is as the user inteded
 function applyOffsets(second, first) {
 	for (var i = 0; i < second.length; i++) {
 
