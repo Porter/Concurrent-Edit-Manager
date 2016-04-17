@@ -26,6 +26,12 @@ ValueStore.prototype.addEdit = function(edit, usersColor, history, editNumber, o
 	editNumber = ((editNumber - offsetDepth) + cycleLen) % cycleLen;
 
 	for (var i = 0; i < offsetDepth; i++, editNumber = nextNumber(editNumber, this.cycleLen)) {
+		if (!history[editNumber]) {
+			console.log(JSON.stringify(history));
+			console.log(editNumber);
+			console.error("History is missing");
+		}
+
 		console.log('applying ', JSON.stringify(history[editNumber]['edit']));
 		applyOffsets(edit, history[editNumber]['edit']);
 		console.log('new edit ', JSON.stringify(edit));

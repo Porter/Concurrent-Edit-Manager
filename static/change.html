@@ -26,9 +26,23 @@
 	
 	var inited = false, editNumber, expectingNumber, expectingResponse = false, lastSubmittedNumber, lastSetText;
 
-	var history = {};
+	editHistory = {};
 
 	var color, user;
+
+	function shiftHistory(editHistory) {
+		var historyReplacement = {};
+		
+		var keys = Object.keys(editHistory);
+		for (var i = 0; i < keys.length; i++) {
+			var edit = editHistory[keys[i]];
+			var newKey = parseInt(keys[i]) + 1;
+			historyReplacement[newKey] = {edit:edit};
+		}
+
+		console.log('hr', JSON.stringify(historyReplacement));
+		return historyReplacement;
+	}
 
 	socket.on('init', function(data) {
 		console.log('initing with');
@@ -51,6 +65,9 @@
 		editNumber = data['number'];
 		expectingNumber = after(editNumber);
 
+		editHistory = shiftHistory(data['history']);  // it's complicated, but the server's history needs to be shifted.
+		console.log(JSON.stringify(editHistory));
+
 		inited = true;
 	});
 
@@ -63,8 +80,28 @@
 		var offsetDepth = editData['offsetDepth'];
 		var edit = editData['edit'];
 
-		history[editNumber_] = editData;
-		valueStore.addEdit(edit, editColor, history, editNumber_, offsetDepth);
+		if (editNumber_ != expectingNumber) {
+			console.error('wrong number');
+		}
+
+		editHistory[editNumber_] = editData;
+		valueStore.addEdit(edit, editColor, editHistory, editNumber_, offsetDepth);
+
+		if (editData['hash'] != hashString(valueStore.getText())) {
+			console.log("vs: " + valueStore.getText());
+			console.log('sv: ' + editData['text']);
+			stopAllJavascript = true;
+			throw new Error('hash miss');
+			alert('hash miss');
+		}
+
+		var lowest = editData['lowest'];
+		for (var i = 0; i < cycleLen/2; i++) {
+			lowest--;
+			if (lowest < 0) lowest += cycleLen;
+
+			delete editHistory[lowest];
+		}
 
 		if (expectingResponse) { 
 			if (editColor == color) {
@@ -73,6 +110,8 @@
 				expectingResponse = false;
 				editNumber = editNumber_;
 				expectingNumber = after(editNumber);
+
+				check();
 			}
 			else {
 				// find difference b/t text and localValue
@@ -96,7 +135,7 @@
 					var number = lastSubmittedNumber;
 					do {
 						number = after(number);
-						applyOffsets(thisUsersEdit, history[number]['edit']);
+						applyOffsets(thisUsersEdit, editHistory[number]['edit']);
 					} while (number != editNumber_)
 					
 					console.log('thisUsersEdit af ', JSON.stringify(thisUsersEdit));
@@ -183,21 +222,6 @@
 			}
 		}
 
-		if (editData['hash'] != hashString(valueStore.getText())) {
-			console.log("vs: " + valueStore.getText());
-			console.log('sv: ' + editData['text']);
-			stopAllJavascript = true;
-			throw new Error('hash miss');
-			alert('hash miss');
-		}
-
-		var lowest = editData['lowest'];
-		for (var i = 0; i < cycleLen/2; i++) {
-			lowest--;
-			if (lowest < 0) lowest += cycleLen;
-
-			delete history[lowest];
-		}
 
 		// let the server know we've processed this edit
 		socket.emit('editConfirmationRecieved', {number:editNumber});
@@ -238,7 +262,7 @@
 		console.log('vs:' + valueStore.getText());
 
 		var reversed = reverseEditPath(edit, valueStore.getText(), text);
-		//history[editNumber] = {reversed:reversed, normal:edit, hash:hashString(text), val:text};
+		//editHistory[editNumber] = {reversed:reversed, normal:edit, hash:hashString(text), val:text};
 
 		lastSubmittedNumber = editNumber;
 
@@ -267,9 +291,6 @@
 		console.log('sending ' + JSON.stringify(edit) + " with num: " + editNumber);
 		expectingResponse = true;
 		submittedEdit = edit;
-
-
-		setTimeout(check, checkTime);
 
 	};
 

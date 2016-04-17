@@ -13,6 +13,7 @@ function getText(div) {
 	var texts = [], lastName = "";
 	for (var i = 0; i < children.length; i++) {
 		var child = children[i], name = child.nodeName.toLowerCase();
+		// console.log(child, name);
 
 		var lastLoop = i == children.length - 1;
 
@@ -22,6 +23,9 @@ function getText(div) {
 				var last = texts.pop();
 				last += child.textContent;
 				texts.push(last);
+			}
+			else if (lastName == "span") {
+				
 			}
 			else {
 				texts.push(child.textContent);

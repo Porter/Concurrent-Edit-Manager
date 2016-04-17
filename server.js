@@ -121,7 +121,7 @@ io.on('connection', function(socket){
 
 
 
-	socket.emit('init', {text:text, number:number, colors:colors, color:userColor});
+	socket.emit('init', {text:text, number:number, colors:colors, color:userColor, history:edits});
 	connections++;
 	socket.color = userColor;
 
