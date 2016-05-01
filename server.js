@@ -172,7 +172,7 @@ io.on('connection', function(socket){
 
 		var hash = change.hashString(text);
 
-		io.emit('editConfirmed', {user:"", color:input['color'], number:number, offsetDepth:offsetDepth, edit:originalEdit, hash:hash,
+		io.emit('editConfirmed', {user:"", color:input['color'], number:number, offsetDepth:offsetDepth, edit:edit, hash:hash,
 					text:text, lowest:lowest});
 	});
 

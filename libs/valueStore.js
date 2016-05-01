@@ -1,6 +1,15 @@
 // valueStore will help keep edits
 var exports;
-if (typeof(module) != "undefined") exports = module.exports = {};
+if (typeof(module) != "undefined") {
+	exports = module.exports = {};
+	var change = require('./change');
+	var util = require('./util');
+
+	applyEditPath = change.applyEditPath;
+	applyEditPathToColors = change.applyEditPathToColors;
+
+	applyOffsets = util.applyOffsets;
+}
 else exports = {}
 
 function nextNumber(num, cycleLen) {
@@ -21,9 +30,9 @@ if (typeof(copyColors) == "undefined") {
 
 ValueStore.prototype.addEdit = function(edit, usersColor, history, editNumber, offsetDepth) {
 
-	edit = copyEdit(edit); // don't want to modify the original
+	/*edit = copyEdit(edit); // don't want to modify the original
 
-	editNumber = ((editNumber - offsetDepth) + cycleLen) % cycleLen;
+	editNumber = ((editNumber - offsetDepth) + this.cycleLen) % this.cycleLen;
 
 	for (var i = 0; i < offsetDepth; i++, editNumber = nextNumber(editNumber, this.cycleLen)) {
 		if (!history[editNumber]) {
@@ -35,7 +44,7 @@ ValueStore.prototype.addEdit = function(edit, usersColor, history, editNumber, o
 		console.log('applying ', JSON.stringify(history[editNumber]['edit']));
 		applyOffsets(edit, history[editNumber]['edit']);
 		console.log('new edit ', JSON.stringify(edit));
-	}
+	}*/
 
 	this.currentText = applyEditPath(this.currentText, edit);
 	applyEditPathToColors(this.colors, edit, usersColor);
