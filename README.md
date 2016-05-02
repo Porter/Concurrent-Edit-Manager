@@ -1,4 +1,4 @@
-# Concurrent-Editing-Manager
+# Concurrent-Edit-Manager
 
 ###[Watch a demo](https://www.youtube.com/watch?v=k2a6rzk2SvM)
 
