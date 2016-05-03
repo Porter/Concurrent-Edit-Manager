@@ -94,10 +94,9 @@ function setText(text, div, colors) {
 		throw new Error('length mismatch');
 	}
 
-	var lines = text.split('\n'), pos = 0, subpos = 0;
+	var lines = text.split('\n');
 	
-	var left = 0;
-	if (pos < colors.length) left = colors[pos][0] - subpos;
+	var colorsIndex = 0, pos = 0;
 	
 	for (var i = 0; i < lines.length; i++) {
 		var d = document.createElement('div');
@@ -111,10 +110,10 @@ function setText(text, div, colors) {
 			div.appendChild(d);
 
 
-			left--;
-			if (left <= 0) {
-				pos++; subpos = 0;
-				if (pos < colors.length) left = colors[pos][0] - subpos;
+			pos++;
+			if (colorsIndex < colors.length && pos >= colors[colorsIndex][0]) {
+				pos = 0;
+				colorsIndex++;
 			}
 
 
@@ -124,40 +123,43 @@ function setText(text, div, colors) {
 
 		var texts = [];
 		while (text.length > 0) {
-			if (left >= text.length) {
+			//console.log(JSON.stringify(colors));
+			//console.log(colorsIndex, pos, text);
+			if (text.length <= colors[colorsIndex][0] - pos) {
 
-				texts.push([text, colors[pos][1]]);
-				left -= text.length;
+				texts.push([text, colors[colorsIndex][1]]);
+				pos += text.length;
+				if (colorsIndex < colors.length && pos >= colors[colorsIndex][0]) {
+					pos = 0;
+					colorsIndex++;
+				}
 				text = "";
 			}
 			else {
-				if (left != 0) {
-					texts.push([text.substring(0, left), colors[pos][1]]);
-					text = text.substring(left);
-				}
-				
+				texts.push([text.substring(0, colors[colorsIndex][0] - pos), colors[colorsIndex][1]]);
+				text = text.substring(colors[colorsIndex][0] - pos);
+			
 
-				pos++; subpos = 0;
-				left = colors[pos][0] - subpos;
+				pos = 0;
+				colorsIndex++;
 			}
 		}
 
-		for (var n = 0; n < texts.length; n++) { // remove preceding spaces with &nbsp;
+		for (var n = 0; n < texts.length; n++) { // replace leading spaces with &nbsp;
 			texts[n][0] = fixSpaces(texts[n][0]);
 		}
-
-		var c = ['green', 'red', 'blue']
-
 
 		for (var n = 0; n < texts.length; n++) {
 			d.innerHTML += '<span style="color:' + texts[n][1] + '">' + texts[n][0] + '</span>';
 		}
 
 		div.appendChild(d);
-		left--;
-		if (left <= 0) {
-			pos++; subpos = 0;
-			if (pos < colors.length) left = colors[pos][0] - subpos;
+		if (i != lines.length - 1) {
+			pos++;
+			if (colorsIndex < colors.length && pos >= colors[colorsIndex][0]) {
+				pos = 0;
+				colorsIndex++;
+			}
 		}
 	}
 }
