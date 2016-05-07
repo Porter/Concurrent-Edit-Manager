@@ -281,7 +281,7 @@ function getPosOfCaret(mainDiv, caret, caretOffset) {
 			position += divs[i].textContent.length + 1;
 		}
 		else {
-			if (isAncestor(caret, divs[i])) {
+			if (isAncestor(caret, divs[i]) || caret == divs[i]) {
 				return position + caretOffset;
 			}
 			position += divs[i].textContent.length;
