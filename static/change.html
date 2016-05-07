@@ -9,6 +9,8 @@
 <script src="/libs/valueStore.js"></script>
 <script type="text/javascript">
 
+
+
 	var stop = false;
 
 	var cycleLen = 1000;
@@ -73,7 +75,7 @@
 
 	socket.on('editConfirmed', function(editData) {
 		if (stopAllJavascript) return;
-		console.log(JSON.stringify(editData));
+		//console.log(JSON.stringify(editData));
 		var editUser = editData['user'];
 		var editColor = editData['color'];
 		var editNumber_ = editData['number']
@@ -88,8 +90,8 @@
 		valueStore.addEdit(edit, editColor, editHistory, editNumber_, offsetDepth);
 
 		if (editData['hash'] != hashString(valueStore.getText())) {
-			console.log("vs: " + valueStore.getText());
-			console.log('sv: ' + editData['text']);
+			console.error("vs: " + valueStore.getText());
+			console.error('sv: ' + editData['text']);
 			stopAllJavascript = true;
 			throw new Error('hash miss');
 			alert('hash miss');
@@ -130,7 +132,7 @@
 				
 				if (submittedEdit) {
 					var thisUsersEdit = copyEdit(submittedEdit);
-					console.log('thisUsersEdit b4 ', JSON.stringify(thisUsersEdit));
+					//console.log('thisUsersEdit b4 ', JSON.stringify(thisUsersEdit));
 
 					var number = lastSubmittedNumber;
 					do {
@@ -138,7 +140,7 @@
 						applyOffsets(thisUsersEdit, editHistory[number]['edit']);
 					} while (number != editNumber_)
 					
-					console.log('thisUsersEdit af ', JSON.stringify(thisUsersEdit));
+					//console.log('thisUsersEdit af ', JSON.stringify(thisUsersEdit));
 
 					localValue = applyEditPath(valueStore.getText(), thisUsersEdit);
 					localColors = valueStore.getColors();
@@ -153,7 +155,7 @@
 				for (var i = 0; i < differenceArray.length; i++) {
 					applyOffsets(differenceArray[i], edit);
 				}
-				console.log('differenceArray', JSON.stringify(differenceArray));
+				//console.log('differenceArray', JSON.stringify(differenceArray));
 
 				for (var i = 0; i < differenceArray.length; i++) {
 					localValue = applyEditPath(localValue, differenceArray[i]);
@@ -193,14 +195,14 @@
 
 				differenceArray.push(difference);
 
-				console.log('lst: ' + lastSetText);
-				console.log('ct : ' + currentText);
-				console.log('dif: ' + JSON.stringify(difference));
-				console.log('differenceArray b4', JSON.stringify(differenceArray));
+				//console.log('lst: ' + lastSetText);
+				//console.log('ct : ' + currentText);
+				//console.log('dif: ' + JSON.stringify(difference));
+				//console.log('differenceArray b4', JSON.stringify(differenceArray));
 				for (var i = 0; i < differenceArray.length; i++) {
 					applyOffsets(differenceArray[i], edit);	
 				}
-				console.log('differenceArray af', JSON.stringify(differenceArray));
+				//console.log('differenceArray af', JSON.stringify(differenceArray));
 
 				localValue = valueStore.getText();
 				localColors = valueStore.getColors();
@@ -218,7 +220,15 @@
 				editNumber = editNumber_;
 				expectingNumber = after(editNumber_);
 
+
+				var s = JSON.stringify(cursor);
 				setCursor(cursor, textarea); 
+				var n = JSON.stringify(getCursor(textarea));
+
+				if (s != n) {
+					console.log(s + " -> " + n);
+					alert('changed');
+				}
 			}
 		}
 
@@ -239,7 +249,7 @@
 		}
 
 		if (differenceArray.length > 0) {
-			console.log("clearing differenceArray");
+			//console.log("clearing differenceArray");
 		}
 		differenceArray = [];
 		
@@ -254,12 +264,19 @@
 			return;
 		}
 
-		console.log('this   ', JSON.stringify(edit));
+
+
+		console.log('checking ------------------------------------------');
+		//console.log(textarea.innerHTML);
+		//setForm(textarea);
+		//console.log(textarea.innerHTML);
+
+		//console.log('this   ', JSON.stringify(edit));
 		//finalize(edit, value, getCursor(textarea));
 		//console.log('becomes', JSON.stringify(edit));
-		console.log('gt:' + text);
-		console.log('lv:' + localValue);
-		console.log('vs:' + valueStore.getText());
+		//console.log('gt:' + text);
+		//console.log('lv:' + localValue);
+		//console.log('vs:' + valueStore.getText());
 
 		var reversed = reverseEditPath(edit, valueStore.getText(), text);
 		//editHistory[editNumber] = {reversed:reversed, normal:edit, hash:hashString(text), val:text};
@@ -273,8 +290,10 @@
 
 		var correct = checkColors(localColors, textarea);
 		if (!correct) {
-			//console.log('incorrect');
+			//console.error('incorrect');
 			var p = getCursor(textarea);
+			// console.log(JSON.stringify(p));
+			// console.log(textarea.innerHTML);
 			
 			setText(text, textarea, localColors);
 			lastSetText = text;
@@ -286,7 +305,7 @@
 
 		var data = {change:str, number:editNumber, color:color};
 
-		console.log(data);
+		//console.log(data);
 		socket.emit('input', data);
 		console.log('sending ' + JSON.stringify(edit) + " with num: " + editNumber);
 		expectingResponse = true;

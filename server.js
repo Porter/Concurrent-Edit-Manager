@@ -133,7 +133,7 @@ io.on('connection', function(socket){
 		
 
 
-		console.log("got edit", n, "at", number, JSON.stringify(edit));
+		//console.log("got edit", n, "at", number, JSON.stringify(edit));
 
 		var originalEdit = util.copyEdit(edit);
 
