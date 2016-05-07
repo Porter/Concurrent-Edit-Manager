@@ -6,52 +6,45 @@ function min(a, b) {
 	return a < b ? a : b;
 }
 
-
-
 function getText(div) {
-	var children = div.childNodes;
-	var texts = [], lastName = "";
-	for (var i = 0; i < children.length; i++) {
-		var child = children[i], name = child.nodeName.toLowerCase();
-		// console.log(child, name);
 
-		var lastLoop = i == children.length - 1;
+	if (div.nodeName.toLowerCase() != "div") {
+		console.error("getText2 wasn't given a div");
+		alert("getText2 wasn't given a div");
+	}
+	return getTextHelper(div, "div").replace(/ /g, ' '); // char code 160 for char code 32
 
-		if (name == "#text" || name == "span" || name == "font") {
-			
-			if (lastName == "#text" || lastName == "span" || lastName == "font") { 
-				var last = texts.pop();
-				last += child.textContent;
-				texts.push(last);
-			}
-			else if (lastName == "span") {
-				
-			}
-			else {
-				texts.push(child.textContent);
-			}
-		}
-		else if (name == "div") {
-			var t = getText(child);
+}
 
+function getTextHelper(node, parentNodeType, position, length) {
+	var nodeType = node.nodeName.toLowerCase();
 
-			if (lastName == "#text" || lastName == "span" || lastName == "font") { 
-				var last = texts.pop();
-				last += child.textContent;
-				texts.push(last);
-			}
-			else {
-				texts.push(t);
-			}
-		}
-		else if (name == "br" && lastName != "#text") {
-			if (!lastLoop || children.length == 1) texts.push("")
-		}
-
-		lastName = name;
+	if (nodeType == "#text") {
+		return node.textContent;
 	}
 
-	return texts.join('\n').replace(/ /g, ' ');
+	if (nodeType == "span" || nodeType == "font" || nodeType == "div") {
+		var texts = [];
+		var children = node.childNodes;
+		for (var i = 0; i < children.length; i++) {
+
+			texts.push(getTextHelper(children[i], nodeType, i, children.length));
+			if (children[i].nodeName.toLowerCase() == "div" && i != children.length-1) {
+				texts.push('\n');
+			}
+		}
+		return texts.join("");
+	}
+
+	if (nodeType == "br") {
+		if (length != 0 && position != length - 1) {
+			return '\n';
+		}	
+		return "";
+	}
+
+	console.error("unsupported tag: " + nodeType);
+
 }
 
 function colorsLength(colors) {
@@ -89,7 +82,7 @@ function setText(text, div, colors) {
 	}
 
 	if (text == "") {
-		div.innerHTML = '<div><font color="black"></font></div>';
+		div.innerHTML = '';
 		return;
 	}
 
@@ -257,7 +250,7 @@ function nextNode(node, stopAt) {
 function getPosOfCaret(mainDiv, caret, caretOffset) {
 	var divs = mainDiv.childNodes;
 
-	if (mainDiv.textContent == "" && isAncestor(caret, mainDiv)) {
+	if (mainDiv.textContent == "" && (isAncestor(caret, mainDiv) || caret == mainDiv)) {
 		return 0;
 	}
 
@@ -408,15 +401,22 @@ function getSpanInPos(pos, div) {
 
 		}
 
+		if (pos == 0) {
+			return [divs[i], 0];
+		}
+
 		pos -= divs[i].textContent.length + 1;
 	}
+	console.error(JSON.stringify(pos) + " is out of setCursor range");
 }
 
 function setCursor(pos, div) {
+	console.log('setting cursor', JSON.stringify(pos));
 	if (!pos) return;
 	
 	var start = getSpanInPos(pos[0], div);
 	var end = getSpanInPos(pos[1], div);
+
 
 	/*if (pos[1][0] >= pos[0][0]) {
 		if (pos[1][0] > pos[0][0] || pos[1][1] > pos[0][1]) {
@@ -505,7 +505,7 @@ function setSpanForm(textarea) {
 
 function setForm(textarea) {
 	if (textarea.textContent == "") {
-		textarea.innerHTML = '<div><font color="black"></font></div>';
+		textarea.innerHTML = '';
 		return;
 	}
 
@@ -547,8 +547,8 @@ function applyOffsetToCursor(cursor, edit) {
 		for (var n = 0; n < edit.length; n++) {
 			var offset = edit[n][0] == "down" ? 1 : -1;
 			
-			if (edit[n][1] > cursor[i][0]) break;
-			if (edit[n][1] == cursor[i][0] && offset == -1) break;
+			if (edit[n][1] > cursor[i]) break;
+			if (edit[n][1] == cursor[i] && offset == -1) break;
 
 
 
@@ -556,6 +556,7 @@ function applyOffsetToCursor(cursor, edit) {
 		}
 	}
 
+	s += JSON.stringify(cursor);
 	console.log(s);
 }
 
